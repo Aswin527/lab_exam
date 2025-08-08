@@ -340,6 +340,7 @@ function AdminPanel() {
                                 <div>MCQ: {session.mcqScore}%</div>
                                 <div className="font-semibold">Total: {session.totalScore}%</div>
                                 <div className="text-red-600">Exit Attempts: {session.exitAttempts}</div>
+                                <div className="text-green-600 font-medium">✓ Completed</div>
                               </div>
                             ) : (
                               <span className="text-gray-500 text-sm">In Progress</span>

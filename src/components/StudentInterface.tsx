@@ -229,7 +229,7 @@ function StudentInterface() {
       
       const success = await startExam(selectedStudent.id, accessCode);
       if (!success) {
-        setAccessCodeError('Failed to start exam. Please check your access code.');
+        setAccessCodeError('Failed to start exam. Please check your access code or contact your teacher if you have already completed the exam.');
         setIsSubmitting(false);
         return;
       }

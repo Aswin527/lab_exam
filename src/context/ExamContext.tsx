@@ -836,6 +836,16 @@ export function ExamProvider({ children }: { children: ReactNode }) {
     const student = students.find(s => s.id === studentId);
     if (!student) return false;
 
+    // Check if student has already taken the exam
+    const existingSession = examSessions.find(session => 
+      session.studentId === studentId && session.isSubmitted
+    );
+    
+    if (existingSession) {
+      alert('You have already completed this exam. Multiple attempts are not allowed.');
+      return false;
+    }
+
     // Validate access code
     if (!validateAccessCode(student.class, student.section, accessCode)) {
       return false;
