@@ -658,6 +658,85 @@ function AdminPanel() {
           </div>
         </div>
       )}
+
+      {/* Edit Access Code Modal */}
+      {editingAccessCode && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Key className="text-blue-600" size={24} />
+                  <h3 className="text-xl font-semibold text-gray-800">Update Access Code</h3>
+                </div>
+                <button
+                  onClick={() => setEditingAccessCode(null)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>Class {editingAccessCode.class} - Section {editingAccessCode.section}</strong>
+                  </p>
+                </div>
+                
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  New Access Code *
+                </label>
+                <input
+                  type="text"
+                  value={editingAccessCode.newCode}
+                  onChange={(e) => setEditingAccessCode({
+                    ...editingAccessCode,
+                    newCode: e.target.value.toUpperCase()
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                  placeholder="Enter new access code"
+                  minLength={6}
+                  maxLength={20}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Minimum 6 characters. Will be converted to uppercase.
+                </p>
+              </div>
+              
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2 text-yellow-800 mb-1">
+                  <Shield size={16} />
+                  <span className="text-sm font-medium">Security Notice</span>
+                </div>
+                <p className="text-xs text-yellow-700">
+                  Changing the access code will require students to use the new code for exam access.
+                  Make sure to communicate the new code to students before their exam.
+                </p>
+              </div>
+              
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setEditingAccessCode(null)}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateAccessCode}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Update Access Code
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
