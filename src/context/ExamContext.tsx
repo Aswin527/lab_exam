@@ -145,6 +145,22 @@ const sampleQuestions: Question[] = [
   },
   {
     id: '6',
+    title: 'Average of Three Subjects',
+    description: 'Write a Python program that takes marks of three subjects as input and calculates their average. Display the average rounded to 2 decimal places.',
+    class: '9th',
+    difficulty: 'Easy',
+    sampleInput: '85\n90\n78',
+    sampleOutput: '84.33',
+    testCases: [
+      { id: '1', input: '85\n90\n78', expectedOutput: '84.33', isHidden: false },
+      { id: '2', input: '100\n95\n88', expectedOutput: '94.33', isHidden: true },
+      { id: '3', input: '70\n80\n90', expectedOutput: '80.00', isHidden: true },
+      { id: '4', input: '0\n50\n100', expectedOutput: '50.00', isHidden: true }
+    ],
+    createdAt: new Date()
+  },
+  {
+    id: '7',
     title: 'String Reversal',
     description: 'Write a Python program to reverse a given string.',
     class: '10th',
@@ -1202,6 +1218,18 @@ async function simulateCodeExecution(code: string, input: string): Promise<strin
     
     const lowerCode = code.toLowerCase();
     const inputs = input.split('\n').filter(line => line.trim());
+    
+    // Sum of two numbers
+    if (lowerCode.includes('average') || lowerCode.includes('avg') || 
+        (lowerCode.includes('/') && lowerCode.includes('3'))) {
+      if (inputs.length >= 3) {
+        const num1 = parseFloat(inputs[0]) || 0;
+        const num2 = parseFloat(inputs[1]) || 0;
+        const num3 = parseFloat(inputs[2]) || 0;
+        const average = (num1 + num2 + num3) / 3;
+        return average.toFixed(2);
+      }
+    }
     
     // Sum of two numbers
     if ((lowerCode.includes('input()') || lowerCode.includes('int(input')) && 
