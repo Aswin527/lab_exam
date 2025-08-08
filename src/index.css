@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ensure proper scrolling in fullscreen mode */
+html, body {
+  overflow: auto !important;
+  height: 100%;
+}
+
+/* Fullscreen container scrolling */
+html:fullscreen, html:-webkit-full-screen, html:-moz-full-screen {
+  overflow: auto !important;
+  height: 100vh;
+}
+
+body:fullscreen, body:-webkit-full-screen, body:-moz-full-screen {
+  overflow: auto !important;
+  height: 100vh;
+}
+
+/* Ensure scrolling works in all fullscreen scenarios */
+*:fullscreen {
+  overflow: auto !important;
+}
+
+*:-webkit-full-screen {
+  overflow: auto !important;
+}
+
+*:-moz-full-screen {
+  overflow: auto !important;
+}
