@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Download, Eye, Clock, User, Book, Code, Plus, Edit, Trash2, Play, CheckCircle, XCircle, Users, HelpCircle } from 'lucide-react';
+import { Search, Download, Eye, Clock, User, Book, Code, Plus, Edit, Trash2, Play, CheckCircle, XCircle, Users, HelpCircle, Key, Shield, Lock } from 'lucide-react';
 import { useExam } from '../context/ExamContext';
 import { Question, MCQQuestion, Student, ExamSession } from '../types/Question';
 import QuestionManager from './QuestionManager';
@@ -7,22 +7,62 @@ import StudentManager from './StudentManager';
 import MCQManager from './MCQManager';
 
 function AdminPanel() {
-  const { examSessions, questions, mcqQuestions, students } = useExam();
+  const { examSessions, questions, mcqQuestions, students, classSections, updateAccessCode } = useExam();
   const [filteredSessions, setFilteredSessions] = useState<ExamSession[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [selectedSession, setSelectedSession] = useState<ExamSession | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [credentials, setCredentials] = useState({ username: '', password: '' });
-  const [activeTab, setActiveTab] = useState<'sessions' | 'questions' | 'mcq' | 'students'>('sessions');
-
+  const [activeTab, setActiveTab] = useState<'sessions' | 'questions' | 'mcq' | 'students' | 'access-codes'>('sessions');
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockoutTime, setLockoutTime] = useState<Date | null>(null);
+  const [editingAccessCode, setEditingAccessCode] = useState<{
+    class: '8th' | '9th' | '10th';
+    section: string;
+    newCode: string;
+  } | null>(null);
   // Simple authentication
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if account is locked
+    if (isLocked && lockoutTime) {
+      const now = new Date();
+      const lockoutEnd = new Date(lockoutTime.getTime() + 15 * 60 * 1000); // 15 minutes lockout
+      
+      if (now < lockoutEnd) {
+        const remainingMinutes = Math.ceil((lockoutEnd.getTime() - now.getTime()) / (60 * 1000));
+        alert(`Account is locked due to multiple failed attempts. Please try again in ${remainingMinutes} minutes.`);
+        return;
+      } else {
+        // Reset lockout
+        setIsLocked(false);
+        setLockoutTime(null);
+        setLoginAttempts(0);
+      }
+    }
+    
     if (credentials.username === 'admin' && credentials.password === 'exam2025') {
       setIsAuthenticated(true);
+      setLoginAttempts(0);
+      setIsLocked(false);
+      setLockoutTime(null);
     } else {
-      alert('Invalid credentials. Use username: admin, password: exam2025');
+      const newAttempts = loginAttempts + 1;
+      setLoginAttempts(newAttempts);
+      
+      if (newAttempts >= 3) {
+        setIsLocked(true);
+        setLockoutTime(new Date());
+        alert('Too many failed login attempts. Account locked for 15 minutes.');
+      } else {
+        alert(`Invalid credentials. ${3 - newAttempts} attempts remaining before account lockout.`);
+      }
+      
+      // Clear password field
+      setCredentials({ ...credentials, password: '' });
     }
   };
 
@@ -74,14 +114,61 @@ function AdminPanel() {
     window.URL.revokeObjectURL(url);
   };
 
+  const handleUpdateAccessCode = () => {
+    if (!editingAccessCode) return;
+    
+    if (!editingAccessCode.newCode.trim()) {
+      alert('Access code cannot be empty');
+      return;
+    }
+    
+    if (editingAccessCode.newCode.length < 6) {
+      alert('Access code must be at least 6 characters long');
+      return;
+    }
+    
+    updateAccessCode(editingAccessCode.class, editingAccessCode.section, editingAccessCode.newCode.toUpperCase());
+    setEditingAccessCode(null);
+    alert('Access code updated successfully!');
+  };
+
+  const handleLogout = () => {
+    const confirmed = confirm('Are you sure you want to logout?');
+    if (confirmed) {
+      setIsAuthenticated(false);
+      setCredentials({ username: '', password: '' });
+      setActiveTab('sessions');
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
           <div className="text-center mb-6">
-            <Book className="mx-auto text-blue-600 mb-3" size={48} />
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 mb-4">
+              <Shield className="text-blue-600" size={32} />
+            </div>
             <h2 className="text-2xl font-bold text-gray-800">Admin Login</h2>
             <p className="text-gray-600 mt-2">Access the exam management panel</p>
+            {isLocked && lockoutTime && (
+              <div className="mt-3 p-3 bg-red-100 border border-red-300 rounded-lg">
+                <div className="flex items-center gap-2 text-red-700">
+                  <Lock size={16} />
+                  <span className="text-sm font-medium">Account Locked</span>
+                </div>
+                <p className="text-xs text-red-600 mt-1">
+                  Too many failed attempts. Try again in 15 minutes.
+                </p>
+              </div>
+            )}
+            {loginAttempts > 0 && !isLocked && (
+              <div className="mt-3 p-2 bg-yellow-100 border border-yellow-300 rounded-lg">
+                <p className="text-xs text-yellow-700">
+                  {3 - loginAttempts} attempts remaining
+                </p>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -111,12 +198,24 @@ function AdminPanel() {
 
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              disabled={isLocked}
+              className={`w-full py-2 px-4 rounded-lg transition-colors font-medium ${
+                isLocked 
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
             >
-              Login
+              {isLocked ? 'Account Locked' : 'Login'}
             </button>
           </form>
 
+          <div className="mt-6 text-center text-xs text-gray-500">
+            <div className="flex items-center justify-center gap-1 mb-2">
+              <Shield size={12} />
+              <span>Secure Admin Access</span>
+            </div>
+            <p>Account will be locked for 15 minutes after 3 failed attempts</p>
+          </div>
          
         </div>
       </div>
@@ -160,8 +259,10 @@ function AdminPanel() {
               </div>
               <button
                 onClick={() => setIsAuthenticated(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium"
               >
+                <Lock size={16} />
                 Logout
               </button>
             </div>
@@ -214,6 +315,17 @@ function AdminPanel() {
             >
               <Users size={20} />
               Students
+            </button>
+            <button
+              onClick={() => setActiveTab('access-codes')}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
+                activeTab === 'access-codes'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Key size={20} />
+              Access Codes
             </button>
           </div>
         </div>

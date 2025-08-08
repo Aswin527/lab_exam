@@ -62,6 +62,7 @@ interface ExamContextType {
   updateExitAttempts: (increment: number) => void;
   isSubmitting: boolean;
   setIsSubmitting: (value: boolean) => void;
+  updateAccessCode: (className: '8th' | '9th' | '10th', section: string, newAccessCode: string) => void;
 }
 
 const ExamContext = createContext<ExamContextType | undefined>(undefined);
@@ -362,6 +363,7 @@ export function ExamProvider({ children }: { children: ReactNode }) {
   const [currentSession, setCurrentSession] = useState<ExamSession | null>(null);
   const [examSessions, setExamSessions] = useState<ExamSession[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [classSections, setClassSections] = useState<ClassSection[]>(CLASS_SECTIONS);
 
   // Load data from Supabase on component mount
   React.useEffect(() => {
@@ -823,12 +825,12 @@ export function ExamProvider({ children }: { children: ReactNode }) {
   };
 
   const validateAccessCode = (className: '8th' | '9th' | '10th', section: string, accessCode: string): boolean => {
-    const classSection = CLASS_SECTIONS.find(cs => cs.class === className && cs.section === section);
+    const classSection = classSections.find(cs => cs.class === className && cs.section === section);
     return classSection ? classSection.accessCode === accessCode : false;
   };
 
   const getExamDuration = (className: '8th' | '9th' | '10th'): number => {
-    const classSection = CLASS_SECTIONS.find(cs => cs.class === className);
+    const classSection = classSections.find(cs => cs.class === className);
     return classSection ? classSection.duration : 90; // default 90 minutes
   };
 
@@ -1181,6 +1183,35 @@ export function ExamProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const updateAccessCode = (className: '8th' | '9th' | '10th', section: string, newAccessCode: string) => {
+    setClassSections(prev => prev.map(cs => 
+      cs.class === className && cs.section === section 
+        ? { ...cs, accessCode: newAccessCode }
+        : cs
+    ));
+    
+    // Save to localStorage for persistence
+    const updatedSections = classSections.map(cs => 
+      cs.class === className && cs.section === section 
+        ? { ...cs, accessCode: newAccessCode }
+        : cs
+    );
+    localStorage.setItem('classSections', JSON.stringify(updatedSections));
+  };
+
+  // Load access codes from localStorage on mount
+  React.useEffect(() => {
+    const savedSections = localStorage.getItem('classSections');
+    if (savedSections) {
+      try {
+        const parsedSections = JSON.parse(savedSections);
+        setClassSections(parsedSections);
+      } catch (error) {
+        console.error('Error loading saved access codes:', error);
+      }
+    }
+  }, []);
+
   return (
     <ExamContext.Provider value={{
       questions,
@@ -1206,12 +1237,13 @@ export function ExamProvider({ children }: { children: ReactNode }) {
       submitMCQSection,
       evaluateCode,
       examSessions,
-      classSections: CLASS_SECTIONS,
+      classSections,
       validateAccessCode,
       getExamDuration,
       updateExitAttempts,
       isSubmitting,
-      setIsSubmitting
+      setIsSubmitting,
+      updateAccessCode
     }}>
       {children}
     </ExamContext.Provider>
