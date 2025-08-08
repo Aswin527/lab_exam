@@ -56,6 +56,10 @@ interface ExamContextType {
   
   // Admin
   examSessions: ExamSession[];
+  classSections: ClassSection[];
+  validateAccessCode: (className: '8th' | '9th' | '10th', section: string, accessCode: string) => boolean;
+  getExamDuration: (className: '8th' | '9th' | '10th') => number;
+  updateExitAttempts: (increment: number) => void;
   isSubmitting: boolean;
   setIsSubmitting: (value: boolean) => void;
 }
@@ -822,7 +826,7 @@ export function ExamProvider({ children }: { children: ReactNode }) {
     const selectedMCQQuestions = getRandomMCQQuestions(student.class, 10);
     
     const newSession: ExamSession = {
-      
+      id: '', // Let Supabase generate this
       studentId,
       student,
       class: student.class,
@@ -842,8 +846,12 @@ export function ExamProvider({ children }: { children: ReactNode }) {
     };
 
     // Save initial session to database
-    await saveExamSessionToSupabase(newSession);
-    setCurrentSession(newSession);
+    const savedSession = await saveExamSessionToSupabase(newSession);
+    if (savedSession) {
+      setCurrentSession(savedSession);
+    } else {
+      setCurrentSession(newSession);
+    }
     return true;
   };
 
@@ -993,19 +1001,9 @@ export function ExamProvider({ children }: { children: ReactNode }) {
       } : null;
 
       if (updatedSession) {
-        await saveExamSessionToSupabase(updatedSession);
-        setCurrentSession(updatedSession);
+        const savedSession = await saveExamSessionToSupabase(updatedSession);
+        setCurrentSession(savedSession || updatedSession);
       }
-
-      setCurrentSession(prev => prev ? {
-        ...prev,
-        results,
-        codingEndTime: new Date(),
-        currentPhase: 'mcq',
-        codingScore,
-        // Reduce exit attempts by 1 when submitting coding section
-        exitAttempts: Math.max(0, prev.exitAttempts - 1)
-      } : null);
 
       console.log('Coding section submitted successfully');
 
@@ -1051,8 +1049,9 @@ export function ExamProvider({ children }: { children: ReactNode }) {
       };
 
       // Save to Supabase
-      await saveExamSessionToSupabase(completedSession);
-      setExamSessions(prev => [...prev, completedSession]);
+      const savedSession = await saveExamSessionToSupabase(completedSession);
+      const finalSession = savedSession || completedSession;
+      setExamSessions(prev => [...prev, finalSession]);
 
       setCurrentSession(null);
     } catch (error) {
@@ -1062,13 +1061,13 @@ export function ExamProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const saveExamSessionToSupabase = async (session: ExamSession) => {
+  const saveExamSessionToSupabase = async (session: ExamSession): Promise<ExamSession | null> => {
     try {
       // Insert or update exam session
       const { data: sessionData, error: sessionError } = await supabase
         .from('exam_sessions')
         .upsert({
-          id: session.id,
+          ...(session.id ? { id: session.id } : {}), // Only include id if it exists
           student_id: session.studentId,
           class: session.class,
           start_time: session.startTime.toISOString(),
@@ -1086,15 +1085,21 @@ export function ExamProvider({ children }: { children: ReactNode }) {
 
       if (sessionError) throw sessionError;
 
+      // Update session with the generated ID from Supabase
+      const updatedSession = {
+        ...session,
+        id: sessionData.id
+      };
+
       // Save exam questions (coding answers)
-      for (const question of session.questions) {
-        const answer = session.answers[question.id] || '';
-        const result = session.results[question.id];
+      for (const question of updatedSession.questions) {
+        const answer = updatedSession.answers[question.id] || '';
+        const result = updatedSession.results[question.id];
         
         await supabase
           .from('exam_questions')
           .upsert({
-            session_id: session.id,
+            session_id: updatedSession.id,
             question_id: question.id,
             answer,
             score: result?.score || 0,
@@ -1104,19 +1109,21 @@ export function ExamProvider({ children }: { children: ReactNode }) {
       }
 
       // Save MCQ answers
-      for (const mcqQuestion of session.mcqQuestions) {
-        const answer = session.mcqAnswers[mcqQuestion.id];
-        const isCorrect = session.mcqResults[mcqQuestion.id] || false;
+      for (const mcqQuestion of updatedSession.mcqQuestions) {
+        const answer = updatedSession.mcqAnswers[mcqQuestion.id];
+        const isCorrect = updatedSession.mcqResults[mcqQuestion.id] || false;
         
         await supabase
           .from('exam_mcq_questions')
           .upsert({
-            session_id: session.id,
+            session_id: updatedSession.id,
             mcq_question_id: mcqQuestion.id,
             answer,
             is_correct: isCorrect
           });
       }
+
+      return updatedSession;
 
     } catch (error) {
       console.error('Error saving exam session to Supabase:', error);
@@ -1124,7 +1131,25 @@ export function ExamProvider({ children }: { children: ReactNode }) {
       const existingSessions = JSON.parse(localStorage.getItem('examSessions') || '[]');
       existingSessions.push(session);
       localStorage.setItem('examSessions', JSON.stringify(existingSessions));
+      return null;
     }
+  };
+
+  // Helper function to update exit attempts in current session
+  const updateExitAttempts = (increment: number) => {
+    if (!currentSession) return;
+    
+    const updatedSession = {
+      ...currentSession,
+      exitAttempts: currentSession.exitAttempts + increment
+    };
+    
+    setCurrentSession(updatedSession);
+    
+    // Save to database asynchronously
+    saveExamSessionToSupabase(updatedSession).catch(error => {
+      console.error('Failed to update exit attempts:', error);
+    });
   };
 
   return (
@@ -1151,11 +1176,11 @@ export function ExamProvider({ children }: { children: ReactNode }) {
       submitCodingSection,
       submitMCQSection,
       evaluateCode,
-      saveExamSessionToSupabase,
       examSessions,
       classSections: CLASS_SECTIONS,
       validateAccessCode,
       getExamDuration,
+      updateExitAttempts,
       isSubmitting,
       setIsSubmitting
     }}>

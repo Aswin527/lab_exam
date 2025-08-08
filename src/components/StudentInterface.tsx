@@ -29,7 +29,7 @@ function StudentInterface() {
     submitMCQAnswer,
     submitCodingSection,
     submitMCQSection,
-    saveExamSessionToSupabase,
+    updateExitAttempts,
     isSubmitting, 
     setIsSubmitting 
   } = useExam();
