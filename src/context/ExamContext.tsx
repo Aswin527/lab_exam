@@ -385,8 +385,9 @@ export function ExamProvider({ children }: { children: ReactNode }) {
 
       if (questionsError) throw questionsError;
       
+      let formattedQuestions: Question[] = [];
       if (questionsData && questionsData.length > 0) {
-        const formattedQuestions: Question[] = questionsData.map(question => ({
+        formattedQuestions = questionsData.map(question => ({
           id: question.id,
           title: question.title,
           description: question.description,
@@ -413,8 +414,10 @@ export function ExamProvider({ children }: { children: ReactNode }) {
 
       if (mcqError) throw mcqError;
       
+      let formattedMCQ: MCQQuestion[] = [];
       if (mcqData && mcqData.length > 0) {
-        const formattedMCQ: MCQQuestion[] = mcqData.map(mcq => ({
+        formattedMCQ = mcqData.map(mcq => ({
+          id: mcq.id,
           question: mcq.question,
           options: Array.isArray(mcq.options) ? mcq.options as string[] : [],
           correctAnswer: mcq.correct_answer,
