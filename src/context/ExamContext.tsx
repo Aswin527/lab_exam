@@ -921,6 +921,8 @@ export function ExamProvider({ children }: { children: ReactNode }) {
         const testStartTime = Date.now();
         
         try {
+          // In a real implementation, you would execute the Python code
+          // For now, we'll simulate the execution
           const actualOutput = await simulateCodeExecution(code, testCase.input);
           const testEndTime = Date.now();
           
@@ -1115,12 +1117,12 @@ export function ExamProvider({ children }: { children: ReactNode }) {
       if (sessionError) throw sessionError;
 
       // Update session with the generated ID from Supabase
-      const updatedSession: ExamSession = {
+      const updatedSession = {
         ...session,
         id: sessionData.id
       };
 
-      // Save coding answers
+      // Save exam questions (coding answers)
       for (const question of updatedSession.questions) {
         const answer = updatedSession.answers[question.id] || '';
         const result = updatedSession.results[question.id];
