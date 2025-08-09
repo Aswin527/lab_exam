@@ -908,9 +908,9 @@ export function ExamProvider({ children }: { children: ReactNode }) {
     const question = questions.find(q => q.id === questionId);
     if (!question) {
       throw new Error('Question not found');
-    }
-
-    const startTime = Date.now();
+        coding_score: Math.round((session.codingScore || 0) * 100) / 100,
+        mcq_score: Math.round((session.mcqScore || 0) * 100) / 100,
+        total_score: Math.round((session.totalScore || 0) * 100) / 100,
     const testResults: TestResult[] = [];
     let hasError = false;
     let errorMessage = '';
@@ -920,9 +920,9 @@ export function ExamProvider({ children }: { children: ReactNode }) {
       for (const testCase of question.testCases) {
         const testStartTime = Date.now();
         
-        try {
-          // In a real implementation, you would execute the Python code
-          // For now, we'll simulate the execution
+            codingScore: session.coding_score || 0,
+            mcqScore: session.mcq_score || 0,
+            totalScore: session.total_score || 0,
           const actualOutput = await simulateCodeExecution(code, testCase.input);
           const testEndTime = Date.now();
           
@@ -986,7 +986,7 @@ export function ExamProvider({ children }: { children: ReactNode }) {
             results[question.id] = await evaluateCode(question.id, code);
           } else {
             // Create a default result for empty answers
-            results[question.id] = {
+      const avgCodingScore = codingQuestions > 0 ? (totalCodingScore / codingQuestions) : 0;
               questionId: question.id,
               code: '',
               testResults: [],
@@ -1059,7 +1059,7 @@ export function ExamProvider({ children }: { children: ReactNode }) {
         const isCorrect = userAnswer === question.correctAnswer;
         mcqResults[question.id] = isCorrect;
         if (isCorrect) correctAnswers++;
-      }
+      const mcqScorePercentage = totalMCQQuestions > 0 ? (correctMCQAnswers / totalMCQQuestions) * 100 : 0;
 
       const mcqScore = currentSession.mcqQuestions.length > 0 
         ? Math.round((correctAnswers / currentSession.mcqQuestions.length) * 100) 
@@ -1112,17 +1112,17 @@ export function ExamProvider({ children }: { children: ReactNode }) {
           exit_attempts: session.exitAttempts
         })
         .select()
-        .single();
-
+      const finalCodingScore = (currentSession.codingScore || 0) * 0.8;
+      const finalMCQScore = mcqScorePercentage * 0.2;
       if (sessionError) throw sessionError;
 
       // Update session with the generated ID from Supabase
-      const updatedSession = {
+        mcqScore: mcqScorePercentage,
         ...session,
         id: sessionData.id
       };
 
-      // Save exam questions (coding answers)
+          score: Math.round((result?.score || 0) * 100) / 100,
       for (const question of updatedSession.questions) {
         const answer = updatedSession.answers[question.id] || '';
         const result = updatedSession.results[question.id];

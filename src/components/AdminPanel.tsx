@@ -448,14 +448,22 @@ function AdminPanel() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             {session.isSubmitted ? (
                               <div className="text-xs space-y-1">
-                                <div>Coding: {session.codingScore}%</div>
-                                <div>MCQ: {session.mcqScore}%</div>
-                                <div className="font-semibold">Total: {session.totalScore}%</div>
-                                <div className="text-red-600">Exit Attempts: {session.exitAttempts}</div>
+                                <div>Coding: {session.codingScore?.toFixed(1) || 0}%</div>
+                                <div>MCQ: {session.mcqScore?.toFixed(1) || 0}%</div>
+                                <div className="font-semibold">Total: {session.totalScore?.toFixed(1) || 0}%</div>
+                                {session.exitAttempts > 0 && (
+                                  <div className="text-red-600">Exit Attempts: {session.exitAttempts}</div>
+                                )}
                                 <div className="text-green-600 font-medium">✓ Completed</div>
                               </div>
                             ) : (
-                              <span className="text-gray-500 text-sm">In Progress</span>
+                              <div className="text-xs space-y-1">
+                                <div className="text-gray-500">In Progress</div>
+                                <div>Phase: {session.currentPhase}</div>
+                                {session.exitAttempts > 0 && (
+                                  <div className="text-red-600">Exit Attempts: {session.exitAttempts}</div>
+                                )}
+                              </div>
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
