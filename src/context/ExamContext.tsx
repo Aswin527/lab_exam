@@ -1117,7 +1117,7 @@ export function ExamProvider({ children }: { children: ReactNode }) {
       if (sessionError) throw sessionError;
 
       // Update session with the generated ID from Supabase
-      const updatedSession = {
+      const updatedSession: ExamSession = {
         ...session,
         id: sessionData.id
       };
