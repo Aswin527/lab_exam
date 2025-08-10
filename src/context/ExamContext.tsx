@@ -1,33 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
-import { Question } from '../types/Question';
-
-interface Student {
-  id: string;
-  name: string;
-  rollNumber: string;
-  class: string;
-  section: string;
-}
-
-interface ExamSession {
-  id: string;
-  studentId: string;
-  studentName: string;
-  rollNumber: string;
-  class: string;
-  section: string;
-  startTime: string;
-  endTime?: string;
-  isSubmitted: boolean;
-  currentPhase: 'coding' | 'mcq';
-  codingScore: number;
-  mcqScore: number;
-  totalScore: number;
-  answers: Record<string, string>;
-  mcqAnswers: Record<string, string>;
-  exitAttempts: number;
-}
+import { Question, MCQQuestion, Student, ExamSession, ClassSection } from '../types/Question';
 
 interface ExamContextType {
   // Student management
@@ -43,13 +16,17 @@ interface ExamContextType {
   // Questions
   questions: Question[];
   currentQuestions: Question[];
+  mcqQuestions: MCQQuestion[];
   addQuestion: (question: Omit<Question, 'id'>) => Promise<void>;
   updateQuestion: (id: string, question: Partial<Question>) => Promise<void>;
   deleteQuestion: (id: string) => Promise<void>;
+  addMCQQuestion: (question: Omit<MCQQuestion, 'id'>) => Promise<void>;
+  updateMCQQuestion: (id: string, question: Partial<MCQQuestion>) => Promise<void>;
+  deleteMCQQuestion: (id: string) => Promise<void>;
   
   // Answers
   saveAnswer: (questionId: string, answer: string) => Promise<void>;
-  saveMCQAnswer: (questionId: string, answer: string) => Promise<void>;
+  saveMCQAnswer: (questionId: string, answer: number) => Promise<void>;
   
   // Phase management
   switchPhase: (phase: 'coding' | 'mcq') => void;
@@ -61,7 +38,13 @@ interface ExamContextType {
   
   // Access codes
   accessCodes: Record<string, string>;
-  updateAccessCode: (classSection: string, newCode: string) => void;
+  updateAccessCode: (classValue: '8th' | '9th' | '10th', section: string, newCode: string) => void;
+  
+  // Class sections
+  classSections: ClassSection[];
+  validateAccessCode: (classValue: string, section: string, code: string) => boolean;
+  getExamDuration: (classValue: string) => number;
+  getStudentsByClass: (classValue: string, section: string) => Student[];
   
   // Security
   loginAttempts: number;
@@ -70,7 +53,14 @@ interface ExamContextType {
   
   // Loading states
   loading: boolean;
+  isSubmitting: boolean;
+  setIsSubmitting: (submitting: boolean) => void;
   loadExamSessions: () => Promise<void>;
+  
+  // Exam submission
+  submitCodingSection: () => Promise<void>;
+  submitMCQSection: () => Promise<void>;
+  updateExitAttempts: (sessionId: string) => Promise<void>;
 }
 
 const ExamContext = createContext<ExamContextType | undefined>(undefined);
@@ -88,15 +78,23 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [examSessions, setExamSessions] = useState<ExamSession[]>([]);
   const [currentSession, setCurrentSession] = useState<ExamSession | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [mcqQuestions, setMCQQuestions] = useState<MCQQuestion[]>([]);
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [lockoutTime, setLockoutTime] = useState(0);
   
   // Default access codes
   const [accessCodes, setAccessCodes] = useState<Record<string, string>>({
+    '8A': 'EXAM2025',
+    '8B': 'EXAM2025',
+    '8C': 'EXAM2025',
+    '9A': 'EXAM2025',
+    '9B': 'EXAM2025',
+    '9C': 'EXAM2025',
     '10A': 'EXAM2025',
     '10B': 'EXAM2025',
     '10C': 'EXAM2025',
@@ -108,9 +106,23 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     '12C': 'EXAM2025',
   });
 
+  // Class sections data
+  const classSections: ClassSection[] = [
+    { class: '8th', section: 'A', accessCode: accessCodes['8A'] || 'EXAM2025', duration: 120 },
+    { class: '8th', section: 'B', accessCode: accessCodes['8B'] || 'EXAM2025', duration: 120 },
+    { class: '8th', section: 'C', accessCode: accessCodes['8C'] || 'EXAM2025', duration: 120 },
+    { class: '9th', section: 'A', accessCode: accessCodes['9A'] || 'EXAM2025', duration: 120 },
+    { class: '9th', section: 'B', accessCode: accessCodes['9B'] || 'EXAM2025', duration: 120 },
+    { class: '9th', section: 'C', accessCode: accessCodes['9C'] || 'EXAM2025', duration: 120 },
+    { class: '10th', section: 'A', accessCode: accessCodes['10A'] || 'EXAM2025', duration: 120 },
+    { class: '10th', section: 'B', accessCode: accessCodes['10B'] || 'EXAM2025', duration: 120 },
+    { class: '10th', section: 'C', accessCode: accessCodes['10C'] || 'EXAM2025', duration: 120 },
+  ];
+
   // Load data on mount
   useEffect(() => {
     loadQuestions();
+    loadMCQQuestions();
     loadStudents();
     loadExamSessions();
     loadAccessCodes();
@@ -160,6 +172,31 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const loadMCQQuestions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('mcq_questions')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      const mcqQuestions = (data || []).map(mcq => ({
+        id: mcq.id,
+        question: mcq.question,
+        options: mcq.options,
+        correctAnswer: mcq.correct_answer,
+        class: mcq.class,
+        difficulty: mcq.difficulty,
+        createdAt: new Date(mcq.created_at),
+      }));
+      
+      setMCQQuestions(mcqQuestions);
+    } catch (error) {
+      console.error('Error loading MCQ questions:', error);
+    }
+  };
+
   const loadStudents = async () => {
     try {
       const { data, error } = await supabase
@@ -186,20 +223,30 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       const sessions = (data || []).map(session => ({
         id: session.id,
-        studentId: session.student_id,
-        studentName: session.student_name,
-        rollNumber: session.roll_number,
+        studentId: session.student_id || '',
+        student: {
+          id: session.student_id || '',
+          name: session.student_name || '',
+          rollNumber: session.roll_number || '',
+          class: session.class as '8th' | '9th' | '10th',
+          section: session.section || '',
+          createdAt: new Date(),
+        },
         class: session.class,
-        section: session.section,
+        questions: [],
+        mcqQuestions: [],
+        answers: session.answers || {},
+        mcqAnswers: session.mcq_answers || {},
+        results: {},
+        mcqResults: {},
         startTime: session.start_time,
+        codingEndTime: session.coding_end_time ? new Date(session.coding_end_time) : undefined,
         endTime: session.end_time,
         isSubmitted: session.is_submitted,
-        currentPhase: session.current_phase,
+        currentPhase: session.current_phase as 'coding' | 'mcq' | 'completed',
         codingScore: session.coding_score || 0,
         mcqScore: session.mcq_score || 0,
         totalScore: session.total_score || 0,
-        answers: session.answers || {},
-        mcqAnswers: session.mcq_answers || {},
         exitAttempts: session.exit_attempts || 0,
       }));
       
@@ -243,8 +290,8 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const selectQuestionsForExam = (): Question[] => {
-    const easyQuestions = questions.filter(q => q.difficulty === 'easy');
-    const mediumQuestions = questions.filter(q => q.difficulty === 'medium');
+    const easyQuestions = questions.filter(q => q.difficulty === 'Easy');
+    const mediumQuestions = questions.filter(q => q.difficulty === 'Medium');
     
     const selectedQuestions: Question[] = [];
     
@@ -291,10 +338,10 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .from('exam_sessions')
         .insert([{
           student_id: student.id,
-          student_name: student.name,
-          roll_number: student.rollNumber,
+          student_name: student.name || '',
+          roll_number: student.rollNumber || '',
           class: student.class,
-          section: student.section,
+          section: student.section || '',
           start_time: new Date().toISOString(),
           current_phase: 'coding',
           is_submitted: false,
@@ -313,18 +360,20 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const newSession: ExamSession = {
         id: data.id,
         studentId: student.id,
-        studentName: student.name,
-        rollNumber: student.rollNumber,
+        student: student,
         class: student.class,
-        section: student.section,
-        startTime: data.start_time,
+        questions: selectedQuestions,
+        mcqQuestions: [],
+        answers: {},
+        mcqAnswers: {},
+        results: {},
+        mcqResults: {},
+        startTime: new Date(data.start_time),
         isSubmitted: false,
-        currentPhase: 'coding',
+        currentPhase: 'coding' as 'coding' | 'mcq' | 'completed',
         codingScore: 0,
         mcqScore: 0,
         totalScore: 0,
-        answers: {},
-        mcqAnswers: {},
         exitAttempts: 0,
       };
 
@@ -395,7 +444,7 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let mcqScore = 0;
 
     // Calculate coding score (80% weight)
-    const codingQuestions = currentQuestions.filter(q => q.type === 'coding');
+    const codingQuestions = session.questions.filter(q => q.type === 'coding');
     if (codingQuestions.length > 0) {
       let codingPoints = 0;
       codingQuestions.forEach(question => {
@@ -408,7 +457,7 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     // Calculate MCQ score (20% weight)
-    const mcqQuestions = currentQuestions.filter(q => q.type === 'mcq');
+    const mcqQuestions = session.mcqQuestions;
     if (mcqQuestions.length > 0) {
       let correctAnswers = 0;
       mcqQuestions.forEach(question => {
@@ -476,11 +525,10 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .insert([{
           title: questionData.title,
           description: questionData.description,
-          type: questionData.type,
+          class: questionData.class,
           difficulty: questionData.difficulty,
-          options: questionData.options,
-          correct_answer: questionData.correctAnswer,
-          test_cases: questionData.testCases,
+          sample_input: questionData.sampleInput,
+          sample_output: questionData.sampleOutput,
         }])
         .select()
         .single();
@@ -491,14 +539,29 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         id: data.id,
         title: data.title,
         description: data.description,
-        type: data.type,
+        class: data.class,
         difficulty: data.difficulty,
-        options: data.options,
-        correctAnswer: data.correct_answer,
-        testCases: data.test_cases,
+        testCases: [],
+        sampleInput: data.sample_input,
+        sampleOutput: data.sample_output,
+        createdAt: new Date(data.created_at),
       };
 
       setQuestions(prev => [newQuestion, ...prev]);
+      
+      // Add test cases separately if they exist
+      if (questionData.testCases && questionData.testCases.length > 0) {
+        for (const testCase of questionData.testCases) {
+          await supabase
+            .from('test_cases')
+            .insert([{
+              question_id: data.id,
+              input: testCase.input,
+              expected_output: testCase.expectedOutput,
+              is_hidden: testCase.isHidden,
+            }]);
+        }
+      }
     } catch (error) {
       console.error('Error adding question:', error);
     }
@@ -511,17 +574,37 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .update({
           title: questionData.title,
           description: questionData.description,
-          type: questionData.type,
+          class: questionData.class,
           difficulty: questionData.difficulty,
-          options: questionData.options,
-          correct_answer: questionData.correctAnswer,
-          test_cases: questionData.testCases,
+          sample_input: questionData.sampleInput,
+          sample_output: questionData.sampleOutput,
         })
         .eq('id', id);
 
       if (error) throw error;
 
       setQuestions(prev => prev.map(q => q.id === id ? { ...q, ...questionData } : q));
+      
+      // Update test cases separately if they exist
+      if (questionData.testCases) {
+        // Delete existing test cases
+        await supabase
+          .from('test_cases')
+          .delete()
+          .eq('question_id', id);
+        
+        // Insert new test cases
+        for (const testCase of questionData.testCases) {
+          await supabase
+            .from('test_cases')
+            .insert([{
+              question_id: id,
+              input: testCase.input,
+              expected_output: testCase.expectedOutput,
+              is_hidden: testCase.isHidden,
+            }]);
+        }
+      }
     } catch (error) {
       console.error('Error updating question:', error);
     }
