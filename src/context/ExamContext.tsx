@@ -854,11 +854,32 @@ export function ExamProvider({ children }: { children: ReactNode }) {
     }
 
     const selectedQuestions = getRandomQuestions(student.class, 2);
-    const selectedMCQQuestions = getRandomMCQQuestions(student.class, 10);
-    
-    const newSession: ExamSession = {
-      id: '', // Let Supabase generate this
-      studentId,
+      // Get questions by difficulty for the student's class
+      const classQuestions = questions.filter(q => q.class === student.class);
+      const easyQuestions = classQuestions.filter(q => q.difficulty === 'Easy');
+      const mediumQuestions = classQuestions.filter(q => q.difficulty === 'Medium');
+      
+      // Select one easy and one medium question
+      const selectedQuestions = [];
+      if (easyQuestions.length > 0) {
+        const randomEasy = easyQuestions[Math.floor(Math.random() * easyQuestions.length)];
+        selectedQuestions.push(randomEasy);
+      }
+      if (mediumQuestions.length > 0) {
+        const randomMedium = mediumQuestions[Math.floor(Math.random() * mediumQuestions.length)];
+        selectedQuestions.push(randomMedium);
+      }
+      
+      // If we don't have enough questions of the right difficulty, fill with any available
+      if (selectedQuestions.length < 2) {
+        const remainingQuestions = classQuestions.filter(q => 
+          !selectedQuestions.some(sq => sq.id === q.id)
+        );
+        while (selectedQuestions.length < 2 && remainingQuestions.length > 0) {
+          const randomIndex = Math.floor(Math.random() * remainingQuestions.length);
+          selectedQuestions.push(remainingQuestions.splice(randomIndex, 1)[0]);
+        }
+      }
       student,
       class: student.class,
       questions: selectedQuestions,
@@ -918,6 +939,9 @@ export function ExamProvider({ children }: { children: ReactNode }) {
     try {
       // Simulate code execution for each test case
       for (const testCase of question.testCases) {
+      // Save to database immediately
+      saveMCQAnswerToDatabase(updatedSession.id, questionId, answer, question?.correctAnswer === answer);
+
         const testStartTime = Date.now();
         
         try {
@@ -966,6 +990,27 @@ export function ExamProvider({ children }: { children: ReactNode }) {
     };
 
     return result;
+  };
+
+  const saveMCQAnswerToDatabase = async (sessionId: string, questionId: string, answer: number, isCorrect: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('exam_mcq_questions')
+        .upsert({
+          session_id: sessionId,
+          mcq_question_id: questionId,
+          answer: answer,
+          is_correct: isCorrect
+        }, {
+          onConflict: 'session_id,mcq_question_id'
+        });
+
+      if (error) {
+        console.error('Error saving MCQ answer:', error);
+      }
+    } catch (error) {
+      console.error('Error saving MCQ answer:', error);
+    }
   };
 
   const submitCodingSection = async () => {
