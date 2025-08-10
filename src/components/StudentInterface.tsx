@@ -22,7 +22,6 @@ function StudentInterface() {
     students,
     classSections,
     validateAccessCode,
-    getExamDuration,
     getStudentsByClass,
     startExam, 
     submitAnswer, 
@@ -35,6 +34,20 @@ function StudentInterface() {
   } = useExam();
   
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Local function to get exam duration based on class
+  const getExamDuration = (studentClass: string): number => {
+    switch (studentClass) {
+      case '8th':
+        return 60; // 60 minutes
+      case '9th':
+        return 75; // 75 minutes
+      case '10th':
+        return 90; // 90 minutes
+      default:
+        return 90; // default 90 minutes
+    }
+  };
 
   // Fullscreen management
   const enterFullscreen = async () => {
@@ -102,7 +115,7 @@ function StudentInterface() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentSession, submitCodingSection, submitMCQSection, getExamDuration, timeRemaining]);
+  }, [currentSession, submitCodingSection, submitMCQSection, timeRemaining]);
 
   // Fullscreen enforcement during exam
   useEffect(() => {
@@ -776,18 +789,6 @@ function StudentInterface() {
               </div>
               
               <div className="space-y-4 text-left">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                  <p className="text-sm text-blue-800">
-                    <strong>{selectedStudent.name}</strong> ({selectedStudent.rollNumber}) - 
-                    Class {selectedStudent.class} Section {selectedStudent.section}
-                  </p>
-                  <p className="text-sm text-blue-700 mt-1">
-                    Duration: <strong>{getExamDuration(selectedStudent.class)} minutes</strong>
-                  </p>
-                </div>
-              </div>
-              
-              <div className="space-y-4 text-left">
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
                   <h4 className="font-semibold text-yellow-800 mb-2">⚠️ Important Guidelines</h4>
                   <ul className="text-sm text-yellow-700 space-y-1">
@@ -877,9 +878,6 @@ function StudentInterface() {
           </div>
         </div>
       )}
-
-
-
     </div>
   );
 }
