@@ -1172,7 +1172,7 @@ export function ExamProvider({ children }: { children: ReactNode }) {
         const answer = updatedSession.answers[question.id] || '';
         const result = updatedSession.results[question.id];
         
-        await supabase
+        const { error: answerError } = await supabase
           .from('exam_questions')
           .upsert({
             session_id: updatedSession.id,
@@ -1181,7 +1181,13 @@ export function ExamProvider({ children }: { children: ReactNode }) {
             score: result?.score || 0,
             passed_tests: result?.passedTests || 0,
             total_tests: result?.totalTests || 0
+          }, {
+            onConflict: 'session_id,question_id'
           });
+        
+        if (answerError) {
+          console.error('Error saving coding answer:', answerError);
+        }
       }
 
       // Save MCQ answers
