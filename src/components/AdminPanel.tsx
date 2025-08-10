@@ -6,8 +6,213 @@ import QuestionManager from './QuestionManager';
 import StudentManager from './StudentManager';
 import MCQManager from './MCQManager';
 
+// Access Code Manager Component
+function AccessCodeManager() {
+  const { classSections = [], updateAccessCode } = useExam();
+  const [editingAccessCode, setEditingAccessCode] = useState<{
+    class: '8th' | '9th' | '10th';
+    section: string;
+    newCode: string;
+  } | null>(null);
+
+  const handleUpdateAccessCode = () => {
+    if (!editingAccessCode) return;
+    
+    if (!editingAccessCode.newCode.trim()) {
+      alert('Access code cannot be empty');
+      return;
+    }
+    
+    if (editingAccessCode.newCode.length < 6) {
+      alert('Access code must be at least 6 characters long');
+      return;
+    }
+    
+    updateAccessCode(editingAccessCode.class, editingAccessCode.section, editingAccessCode.newCode.toUpperCase());
+    setEditingAccessCode(null);
+    alert('Access code updated successfully!');
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">Access Code Management</h2>
+            <p className="text-gray-600">Manage access codes for each class and section</p>
+          </div>
+          
+          <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+            <Shield size={16} />
+            <span>Secure Access Control</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Access Codes Grid */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {classSections.map((section) => (
+            <div key={`${section.class}-${section.section}`} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="font-semibold text-gray-800">Class {section.class}</h3>
+                  <p className="text-sm text-gray-600">Section {section.section}</p>
+                </div>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                  section.class === '8th' ? 'bg-purple-100 text-purple-800' :
+                  section.class === '9th' ? 'bg-blue-100 text-blue-800' : 
+                  'bg-green-100 text-green-800'
+                }`}>
+                  {section.duration} min
+                </span>
+              </div>
+              
+              <div className="mb-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Access Code</label>
+                <div className="bg-gray-50 border border-gray-200 rounded px-3 py-2 font-mono text-sm">
+                  {section.accessCode}
+                </div>
+              </div>
+              
+              <button
+                onClick={() => setEditingAccessCode({
+                  class: section.class,
+                  section: section.section,
+                  newCode: section.accessCode
+                })}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                <Edit size={14} />
+                Edit Code
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Security Guidelines */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Shield className="text-blue-600" size={24} />
+          <h3 className="text-lg font-semibold text-gray-800">Security Guidelines</h3>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-3">
+            <h4 className="font-medium text-gray-800">Best Practices</h4>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• Use unique codes for each class/section</li>
+              <li>• Minimum 6 characters for security</li>
+              <li>• Change codes regularly</li>
+              <li>• Avoid predictable patterns</li>
+            </ul>
+          </div>
+          
+          <div className="space-y-3">
+            <h4 className="font-medium text-gray-800">Admin Security Features</h4>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• Account lockout after 3 failed attempts</li>
+              <li>• 15-minute lockout duration</li>
+              <li>• Secure logout confirmation</li>
+              <li>• Access code change notifications</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Edit Access Code Modal */}
+      {editingAccessCode && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Key className="text-blue-600" size={24} />
+                  <h3 className="text-xl font-semibold text-gray-800">Update Access Code</h3>
+                </div>
+                <button
+                  onClick={() => setEditingAccessCode(null)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>Class {editingAccessCode.class} - Section {editingAccessCode.section}</strong>
+                  </p>
+                </div>
+                
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  New Access Code *
+                </label>
+                <input
+                  type="text"
+                  value={editingAccessCode.newCode}
+                  onChange={(e) => setEditingAccessCode({
+                    ...editingAccessCode,
+                    newCode: e.target.value.toUpperCase()
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                  placeholder="Enter new access code"
+                  minLength={6}
+                  maxLength={20}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Minimum 6 characters. Will be converted to uppercase.
+                </p>
+              </div>
+              
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2 text-yellow-800 mb-1">
+                  <Shield size={16} />
+                  <span className="text-sm font-medium">Security Notice</span>
+                </div>
+                <p className="text-xs text-yellow-700">
+                  Changing the access code will require students to use the new code for exam access.
+                  Make sure to communicate the new code to students before their exam.
+                </p>
+              </div>
+              
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setEditingAccessCode(null)}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateAccessCode}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Update Access Code
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminPanel() {
-  const { examSessions, questions, mcqQuestions, students, classSections, updateAccessCode } = useExam();
+  const { 
+    examSessions = [], 
+    questions = [], 
+    mcqQuestions = [], 
+    students = [], 
+    classSections = [], 
+    updateAccessCode 
+  } = useExam();
   const [filteredSessions, setFilteredSessions] = useState<ExamSession[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [classFilter, setClassFilter] = useState('');
@@ -18,11 +223,7 @@ function AdminPanel() {
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [lockoutTime, setLockoutTime] = useState<Date | null>(null);
-  const [editingAccessCode, setEditingAccessCode] = useState<{
-    class: '8th' | '9th' | '10th';
-    section: string;
-    newCode: string;
-  } | null>(null);
+
   // Simple authentication
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,24 +313,6 @@ function AdminPanel() {
     a.download = `python_exam_results_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-  };
-
-  const handleUpdateAccessCode = () => {
-    if (!editingAccessCode) return;
-    
-    if (!editingAccessCode.newCode.trim()) {
-      alert('Access code cannot be empty');
-      return;
-    }
-    
-    if (editingAccessCode.newCode.length < 6) {
-      alert('Access code must be at least 6 characters long');
-      return;
-    }
-    
-    updateAccessCode(editingAccessCode.class, editingAccessCode.section, editingAccessCode.newCode.toUpperCase());
-    setEditingAccessCode(null);
-    alert('Access code updated successfully!');
   };
 
   const handleLogout = () => {
@@ -258,7 +441,6 @@ function AdminPanel() {
                 Scoring: <span className="font-semibold text-blue-600">80% Coding + 20% MCQ</span>
               </div>
               <button
-                onClick={() => setIsAuthenticated(false)}
                 onClick={handleLogout}
                 className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium"
               >
@@ -448,10 +630,10 @@ function AdminPanel() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             {session.isSubmitted ? (
                               <div className="text-xs space-y-1">
-                                <div>Coding: {session.codingScore?.toFixed(1) || 0}%</div>
-                                <div>MCQ: {session.mcqScore?.toFixed(1) || 0}%</div>
-                                <div className="font-semibold">Total: {session.totalScore?.toFixed(1) || 0}%</div>
-                                {session.exitAttempts > 0 && (
+                                <div>Coding: {(session.codingScore || 0).toFixed(1)}%</div>
+                                <div>MCQ: {(session.mcqScore || 0).toFixed(1)}%</div>
+                                <div className="font-semibold">Total: {(session.totalScore || 0).toFixed(1)}%</div>
+                                {(session.exitAttempts || 0) > 0 && (
                                   <div className="text-red-600">Exit Attempts: {session.exitAttempts}</div>
                                 )}
                                 <div className="text-green-600 font-medium">✓ Completed</div>
@@ -460,7 +642,7 @@ function AdminPanel() {
                               <div className="text-xs space-y-1">
                                 <div className="text-gray-500">In Progress</div>
                                 <div>Phase: {session.currentPhase}</div>
-                                {session.exitAttempts > 0 && (
+                                {(session.exitAttempts || 0) > 0 && (
                                   <div className="text-red-600">Exit Attempts: {session.exitAttempts}</div>
                                 )}
                               </div>
@@ -494,8 +676,14 @@ function AdminPanel() {
           <QuestionManager />
         ) : activeTab === 'mcq' ? (
           <MCQManager />
-        ) : (
+        ) : activeTab === 'students' ? (
           <StudentManager />
+        ) : activeTab === 'access-codes' ? (
+          <AccessCodeManager />
+        ) : (
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <p className="text-gray-500">Select a tab to manage exam data.</p>
+          </div>
         )}
       </div>
 
@@ -664,85 +852,6 @@ function AdminPanel() {
                     })}
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Access Code Modal */}
-      {editingAccessCode && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Key className="text-blue-600" size={24} />
-                  <h3 className="text-xl font-semibold text-gray-800">Update Access Code</h3>
-                </div>
-                <button
-                  onClick={() => setEditingAccessCode(null)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-6">
-              <div className="mb-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                  <p className="text-sm text-blue-800">
-                    <strong>Class {editingAccessCode.class} - Section {editingAccessCode.section}</strong>
-                  </p>
-                </div>
-                
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  New Access Code *
-                </label>
-                <input
-                  type="text"
-                  value={editingAccessCode.newCode}
-                  onChange={(e) => setEditingAccessCode({
-                    ...editingAccessCode,
-                    newCode: e.target.value.toUpperCase()
-                  })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
-                  placeholder="Enter new access code"
-                  minLength={6}
-                  maxLength={20}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Minimum 6 characters. Will be converted to uppercase.
-                </p>
-              </div>
-              
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-                <div className="flex items-center gap-2 text-yellow-800 mb-1">
-                  <Shield size={16} />
-                  <span className="text-sm font-medium">Security Notice</span>
-                </div>
-                <p className="text-xs text-yellow-700">
-                  Changing the access code will require students to use the new code for exam access.
-                  Make sure to communicate the new code to students before their exam.
-                </p>
-              </div>
-              
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setEditingAccessCode(null)}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleUpdateAccessCode}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                >
-                  Update Access Code
-                </button>
               </div>
             </div>
           </div>
