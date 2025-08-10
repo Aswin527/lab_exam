@@ -633,8 +633,8 @@ function AdminPanel() {
                                     ? 'bg-green-100 border border-green-300'
                                     : userAnswer === optionIndex && optionIndex !== question.correctAnswer
                                     ? 'bg-red-100 border border-red-300'
-                                    : userAnswer === optionIndex
-                                    ? 'bg-blue-100 border border-blue-300'
+                                    : userAnswer === optionIndex && optionIndex === question.correctAnswer
+                                    ? 'bg-green-100 border border-green-300'
                                     : 'bg-gray-50'
                                 }`}
                               >
@@ -649,8 +649,11 @@ function AdminPanel() {
                                   {optionIndex === question.correctAnswer && (
                                     <span className="text-xs text-green-600 font-medium">(Correct Answer)</span>
                                   )}
-                                  {userAnswer === optionIndex && (
+                                  {userAnswer === optionIndex && optionIndex !== question.correctAnswer && (
                                     <span className="text-xs text-blue-600 font-medium">(Student's Answer)</span>
+                                  )}
+                                  {userAnswer === optionIndex && optionIndex === question.correctAnswer && (
+                                    <span className="text-xs text-green-600 font-medium">(Student's Correct Answer)</span>
                                   )}
                                 </div>
                               </div>
