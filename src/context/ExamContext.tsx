@@ -625,6 +625,74 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const addMCQQuestion = async (questionData: Omit<MCQQuestion, 'id'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('mcq_questions')
+        .insert([{
+          question: questionData.question,
+          options: questionData.options,
+          correct_answer: questionData.correctAnswer,
+          class: questionData.class,
+          difficulty: questionData.difficulty,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newMCQQuestion: MCQQuestion = {
+        id: data.id,
+        question: data.question,
+        options: data.options,
+        correctAnswer: data.correct_answer,
+        class: data.class,
+        difficulty: data.difficulty,
+        createdAt: new Date(data.created_at),
+      };
+
+      setMCQQuestions(prev => [newMCQQuestion, ...prev]);
+    } catch (error) {
+      console.error('Error adding MCQ question:', error);
+    }
+  };
+
+  const updateMCQQuestion = async (id: string, questionData: Partial<MCQQuestion>) => {
+    try {
+      const { error } = await supabase
+        .from('mcq_questions')
+        .update({
+          question: questionData.question,
+          options: questionData.options,
+          correct_answer: questionData.correctAnswer,
+          class: questionData.class,
+          difficulty: questionData.difficulty,
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setMCQQuestions(prev => prev.map(q => q.id === id ? { ...q, ...questionData } : q));
+    } catch (error) {
+      console.error('Error updating MCQ question:', error);
+    }
+  };
+
+  const deleteMCQQuestion = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('mcq_questions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setMCQQuestions(prev => prev.filter(q => q.id !== id));
+    } catch (error) {
+      console.error('Error deleting MCQ question:', error);
+    }
+  };
+
   const adminLogin = (username: string, password: string): boolean => {
     if (isLocked) {
       return false;
@@ -671,9 +739,13 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     submitExam,
     questions,
     currentQuestions,
+    mcqQuestions,
     addQuestion,
     updateQuestion,
     deleteQuestion,
+    addMCQQuestion,
+    updateMCQQuestion,
+    deleteMCQQuestion,
     saveAnswer,
     saveMCQAnswer,
     switchPhase,
@@ -682,11 +754,76 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     adminLogout,
     accessCodes,
     updateAccessCode,
+    classSections,
+    validateAccessCode: (classValue: string, section: string, code: string) => {
+      const classSection = classSections.find(cs => cs.class === classValue && cs.section === section);
+      return classSection ? classSection.accessCode === code : false;
+    },
+    getExamDuration: (classValue: string) => {
+      const classSection = classSections.find(cs => cs.class === classValue);
+      return classSection ? classSection.duration : 120;
+    },
+    getStudentsByClass: (classValue: string, section: string) => {
+      return students.filter(s => s.class === classValue && s.section === section);
+    },
     loginAttempts,
     isLocked,
     lockoutTime,
     loading,
+    isSubmitting,
+    setIsSubmitting,
     loadExamSessions,
+    submitCodingSection: async () => {
+      if (!currentSession) return;
+      
+      try {
+        const { error } = await supabase
+          .from('exam_sessions')
+          .update({
+            coding_end_time: new Date().toISOString(),
+            current_phase: 'mcq'
+          })
+          .eq('id', currentSession.id);
+
+        if (error) throw error;
+
+        setCurrentSession(prev => prev ? { 
+          ...prev, 
+          codingEndTime: new Date(),
+          currentPhase: 'mcq'
+        } : null);
+      } catch (error) {
+        console.error('Error submitting coding section:', error);
+      }
+    },
+    submitMCQSection: async () => {
+      await submitExam();
+    },
+    updateExitAttempts: async (sessionId: string) => {
+      try {
+        const session = examSessions.find(s => s.id === sessionId);
+        if (!session) return;
+
+        const newExitAttempts = (session.exitAttempts || 0) + 1;
+        
+        const { error } = await supabase
+          .from('exam_sessions')
+          .update({ exit_attempts: newExitAttempts })
+          .eq('id', sessionId);
+
+        if (error) throw error;
+
+        setExamSessions(prev => prev.map(s => 
+          s.id === sessionId ? { ...s, exitAttempts: newExitAttempts } : s
+        ));
+
+        if (currentSession && currentSession.id === sessionId) {
+          setCurrentSession(prev => prev ? { ...prev, exitAttempts: newExitAttempts } : null);
+        }
+      } catch (error) {
+        console.error('Error updating exit attempts:', error);
+      }
+    },
   };
 
   return (
