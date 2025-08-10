@@ -21,7 +21,6 @@ function StudentInterface() {
     currentSession, 
     students,
     classSections,
-    validateAccessCode,
     getStudentsByClass,
     startExam, 
     submitAnswer, 
@@ -47,6 +46,34 @@ function StudentInterface() {
       default:
         return 90; // default 90 minutes
     }
+  };
+
+  // Local function to validate access codes
+  const validateAccessCode = (studentClass: string, section: string, accessCode: string): boolean => {
+    // Define access codes for each class and section
+    const accessCodes: { [key: string]: { [key: string]: string } } = {
+      '8th': {
+        'A': 'PY8A2024',
+        'B': 'PY8B2024',
+        'C': 'PY8C2024',
+        'D': 'PY8D2024'
+      },
+      '9th': {
+        'A': 'PY9A2024',
+        'B': 'PY9B2024',
+        'C': 'PY9C2024',
+        'D': 'PY9D2024'
+      },
+      '10th': {
+        'A': 'PY10A2024',
+        'B': 'PY10B2024',
+        'C': 'PY10C2024',
+        'D': 'PY10D2024'
+      }
+    };
+
+    const expectedCode = accessCodes[studentClass]?.[section];
+    return expectedCode === accessCode.trim().toUpperCase();
   };
 
   // Fullscreen management
