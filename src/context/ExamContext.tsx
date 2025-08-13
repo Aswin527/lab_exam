@@ -160,15 +160,48 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loadQuestions = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: questionsData, error: questionsError } = await supabase
         .from('questions')
         .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      setQuestions(data || []);
+      if (questionsError) throw questionsError;
+      
+      if (!questionsData) {
+        setQuestions([]);
+        return;
+      }
+      
+      // Fetch test cases for all questions
+      const { data: testCasesData, error: testCasesError } = await supabase
+        .from('test_cases')
+        .select('*');
+      
+      if (testCasesError) throw testCasesError;
+      
+      // Map questions with their test cases
+      const questionsWithTestCases = questionsData.map(question => ({
+        id: question.id,
+        title: question.title,
+        description: question.description,
+        class: question.class,
+        difficulty: question.difficulty,
+        sampleInput: question.sample_input,
+        sampleOutput: question.sample_output,
+        createdAt: new Date(question.created_at),
+        testCases: (testCasesData || [])
+          .filter(tc => tc.question_id === question.id)
+          .map(tc => ({
+            input: tc.input,
+            expectedOutput: tc.expected_output,
+            isHidden: tc.is_hidden
+          }))
+      }));
+      
+      setQuestions(questionsWithTestCases);
     } catch (error) {
       console.error('Error loading questions:', error);
+      setQuestions([]);
     }
   };
 
