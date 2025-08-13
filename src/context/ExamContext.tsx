@@ -216,7 +216,25 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const { data, error } = await supabase
         .from('exam_sessions')
-        .select('*')
+        .select(`
+          id,
+          student_id,
+          student_name,
+          roll_number,
+          class,
+          section,
+          start_time,
+          coding_end_time,
+          end_time,
+          current_phase,
+          is_submitted,
+          coding_score,
+          mcq_score,
+          total_score,
+          answers,
+          mcq_answers,
+          exit_attempts
+        `)
         .order('start_time', { ascending: false });
       
       if (error) throw error;
@@ -239,9 +257,9 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         mcqAnswers: session.mcq_answers || {},
         results: {},
         mcqResults: {},
-        startTime: session.start_time,
+        startTime: new Date(session.start_time),
         codingEndTime: session.coding_end_time ? new Date(session.coding_end_time) : undefined,
-        endTime: session.end_time,
+        endTime: session.end_time ? new Date(session.end_time) : undefined,
         isSubmitted: session.is_submitted,
         currentPhase: session.current_phase as 'coding' | 'mcq' | 'completed',
         codingScore: session.coding_score || 0,
