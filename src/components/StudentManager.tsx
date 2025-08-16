@@ -453,7 +453,7 @@ function StudentManager() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {student.createdAt.toLocaleDateString()}
+                    {student.createdAt ? student.createdAt.toLocaleDateString() : 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">

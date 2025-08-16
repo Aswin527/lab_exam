@@ -238,7 +238,11 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setStudents(data || []);
+      const studentsWithDates = (data || []).map(student => ({
+        ...student,
+        createdAt: new Date(student.created_at || new Date())
+      }));
+      setStudents(studentsWithDates);
     } catch (error) {
       console.error('Error loading students:', error);
     }
@@ -553,6 +557,7 @@ export const ExamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         rollNumber: data.roll_number,
         class: data.class,
         section: data.section,
+        createdAt: new Date(data.created_at)
       };
 
       setStudents(prev => [newStudent, ...prev]);
