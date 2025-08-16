@@ -123,6 +123,9 @@ export interface Database {
         Row: {
           id: string
           student_id: string
+          student_name: string
+          roll_number: string
+          section: string
           class: '9th' | '10th'
           start_time: string
           coding_end_time: string | null
@@ -132,12 +135,17 @@ export interface Database {
           mcq_score: number
           total_score: number
           is_submitted: boolean
+          answers: Json
+          mcq_answers: Json
           exit_attempts: number
           created_at: string
         }
         Insert: {
           id?: string
           student_id: string
+          student_name?: string
+          roll_number?: string
+          section?: string
           class: '9th' | '10th'
           start_time?: string
           coding_end_time?: string | null
@@ -147,12 +155,17 @@ export interface Database {
           mcq_score?: number
           total_score?: number
           is_submitted?: boolean
+          answers?: Json
+          mcq_answers?: Json
           exit_attempts?: number
           created_at?: string
         }
         Update: {
           id?: string
           student_id?: string
+          student_name?: string
+          roll_number?: string
+          section?: string
           class?: '9th' | '10th'
           start_time?: string
           coding_end_time?: string | null
@@ -162,6 +175,8 @@ export interface Database {
           mcq_score?: number
           total_score?: number
           is_submitted?: boolean
+          answers?: Json
+          mcq_answers?: Json
           exit_attempts?: number
           created_at?: string
         }
